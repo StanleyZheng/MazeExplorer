@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv = "Content-Type" content = "text/html;charset=utf-8" >
+    <title>Maze Explorer</title>
+
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        attribute vec4 vPosition;
+        attribute vec4 vColor;
+    	attribute vec4 vNormal;
+        attribute vec2 aTextureCoord;
+        varying mediump vec2 vTextureCoord;
+        varying vec4 fColor;
+
+        uniform mat4 modelMatrix;
+        uniform vec3 translations;
+        uniform mat4 modelViewMatrix;
+        uniform mat4 perspectiveMatrix;
+		uniform vec4 ambientProduct, diffuseProduct, specularProduct, lightPosition;
+		uniform float shininess;
+        
+        void main(){
+            // pos is vertex position in eye coordinates
+            vec3 pos = (perspectiveMatrix * modelViewMatrix * modelMatrix * vPosition).xyz;
+            
+            // variables for Phong Shading
+            vec3 L = normalize(lightPosition.xyz - pos);
+            vec3 E = -normalize( pos );
+            vec3 H = normalize( L + E );
+            vec3 N = normalize((perspectiveMatrix * modelViewMatrix * modelMatrix * vNormal).xyz);
+
+            // Compute terms in the illumination equation
+            vec4 ambient = ambientProduct;
+
+            float Kd = max( dot(L, N), 0.0 );
+            vec4  diffuse = Kd * diffuseProduct;
+
+            float Ks = pow( max(dot(N, H), 0.0), shininess );
+            vec4  specular = Ks * specularProduct;
+            
+            if( dot(L, N) < 0.0 ) {
+                specular = vec4(0.0, 0.0, 0.0, 1.0);
+            }
+
+            gl_Position = perspectiveMatrix * modelViewMatrix * modelMatrix * vPosition;
+            fColor = vColor + ambient + diffuse + specular;
+            
+            vTextureCoord = aTextureCoord;
+        }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        precision mediump float;
+        varying vec4 fColor;
+        varying mediump vec2 vTextureCoord;
+        
+		uniform sampler2D uSampler;
+        
+        void main() {
+            gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t)) * fColor;
+        }
+    </script>
+
+    <script type = "text/javascript" src = "./Common/webgl-utils.js"></script>
+    <script type = "text/javascript" src = "./Common/initShaders.js"></script>
+    <script type = "text/javascript" src = "./Common/MV.js"></script>
+    <script type = "text/javascript" src = "./app.js"></script>
+
+    <style>
+        body{
+            background-color: #EEEEEE;
+            margin: 0px;
+            padding: 0px;
+            padding-top: 20px;
+        }
+    
+        #adjustables{
+            margin: 0 auto;
+            width: 50%;
+            min-width: 500px;
+            color: white;
+            font-family: arial;
+            font-size: 14px;
+        }
+    
+        #adjustables table{
+            width: 100%;
+            height: 100%;
+        }
+        
+        #adjustables table td{
+            height: 10px;
+            line-height: 10px;
+            color: black;
+            text-align: center;
+        }
+        
+        .slider{
+            width: 100px;
+        }
+
+        .noselect {
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none; /* Safari */
+            -khtml-user-select: none; /* Konqueror HTML */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */
+        }
+    </style>
+</head>
+
+<body class="noselect" style="cursor:default;">
+    <div style="margin:0px auto; width:100%; min-width: 500px;">
+        <canvas id="gl-canvas" style="margin:0px auto; display:block;">
+            Your browser doesn't support the HTML5 canvas element
+        </canvas>
+    </div>
+    
+    <br/>
+    <div id = "adjustables">
+        <table>
+            <tr>
+                <td>'WASD' Keys:</td>
+                <td>Time of Day</td>
+                <td>Mouse Sensitivity</td>
+                <td>'m' Key:</td>
+            </tr>
+            <tr>
+                <td>Move</td>
+                <td> <input id="timeSlider" class="slider" type="range" min="0" max="200" step="1" value="0" autocomplete="off" onchange="timeSliderChange()"> </td>
+                <td> <input id="mouseSlider" class="slider" type="range" min="1" max="2" step="0.001" value="1" autocomplete="off" onchange="mouseSliderChange()"> </td>
+                <td>Toggle Map</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>Left & Right Arrow:<br/><br/>Change Time of Day</td>
+                <td></td>
+                <td></td>
+            </tr>
+        </table>
+    </div>
+    
+    <img id="floorImage" src="maze_floor.png" crossOrigin="anonymous" hidden/>
+    <img id="wallImage" src="maze_wall.png" crossOrigin="anonymous" hidden/>
+</body>
+</html>
